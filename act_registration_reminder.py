@@ -8,17 +8,18 @@ from selenium.webdriver.common.by import By
 import sys, traceback
 import pickle
 
-
 acked_months = []
-gmail_pwd = "A GOOGLE APP-SPECIFIC PASSWORD FOR SENDING EMAIL"
-email = "YOUR EMAIL (SHARED FOR ACT LOGIN AND EMAIL SENDING)"
-password = "YOUR ACT ACCOUNT PASSWORD"
-monthafter = 7 #THE MONTH AFTER WHICH THE BOT WILL NOTIFY YOU
-chromedriver_path = "YOUR PATH FOR A CHROME DRIVER COMPATIBLE WITH YOUR CURRENT CHROME"
+gmail_pwd = "<Google account app-specific password>"
+email = "<Your email address>"
+password = "<MyACT password>"
+monthafter = 7 #The month after which notifications start
+chromedriver_path = "<Your chrome driver path>"
+chrome_profiles_dir = "<Your chrome user data directory, eg C:\Users\YourUserName\AppData\Local\Google\Chrome\User Data>"
+chrome_profile_name = "<Your chrome profile directory name, eg Profile 1>"
 
-#PLEASE NOTE, THIS SCRIPT SAVES YOUR LOGIN STATUS IN A FILE IN THE CURRENT DIRECTORY
-#DO NOT SEND IT TO ANYONE, IT WILL GRANT ACCESS TO YOUR ACT ACCOUNT
-#FROM TIME TO TIME YOU MAY ALSO NEED TO SOLVE A CAPTCHA
+# SESSION DATA IS STORED IN act_login_session.pickle, IN CURRENT DIRECTORY
+# The utilizaiton of your chrome profile is to retain the captcha cookie, so you will not have to solve so many captchas
+#    - This also helps if you are already logged in on your chrome profile
 
 session = requests.session()
 
@@ -51,6 +52,8 @@ def login(waittime=5):
     global email
     global password
     global chromedriver_path
+    global chrome_profiles_dir
+    global chrome_profile_name
 
     print("Logging in!")
     try:
@@ -59,6 +62,9 @@ def login(waittime=5):
         options.add_argument('headless')
         options.add_argument('window-size=1920x1080')
         options.add_argument("disable-gpu")"""
+        options.add_argument(r"--user-data-dir=" + chrome_profiles_dir)
+        options.add_argument(r"--profile-directory=" + chrome_profile_name)
+        #preserve cookies so less captchas
         driver = selenium.webdriver.Chrome(executable_path=chromedriver_path, options=options)
         driver.get("https://my.act.org/")
         print("Waiting for site load")
@@ -68,17 +74,23 @@ def login(waittime=5):
         if("in line" in text.lower()):
             send_email("ACT Reminder", "A captcha has been detected, please solve the captcha then continue")
             input("Please solve the captcha, then press enter to continue")
-        continue_btn = driver.find_element(By.CSS_SELECTOR, '[aria-label="Continue"]')
-        if(continue_btn):
-            continue_btn.click()
+        if("sign in to your account" in text.lower()):
+            print("Sign in page detected, entering password...")
+            continue_btn = driver.find_element(By.CSS_SELECTOR, '[aria-label="Continue"]')
+            if(continue_btn):
+                continue_btn.click()
+            else:
+                raise TypeError("Element not found")
+            time.sleep(waittime/10)
+            driver.find_element(By.CSS_SELECTOR, '[name="email"]').send_keys(email)
+            driver.find_element(By.CSS_SELECTOR, '[type="password"]').send_keys(password)
+            time.sleep(waittime/10)
+            driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
+            time.sleep(waittime/2)
         else:
-            raise TypeError("Element not found")
-        time.sleep(waittime/10)
-        driver.find_element(By.CSS_SELECTOR, '[name="email"]').send_keys(email)
-        driver.find_element(By.CSS_SELECTOR, '[type="password"]').send_keys(password)
-        time.sleep(waittime/10)
-        driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
-        time.sleep(waittime/2)
+            print("Already signed in, dumping cookies...")
+
+        #directly dump if no sign in modal
         for cookie in driver.get_cookies():
             session.cookies.set(cookie["name"], cookie["value"], domain = cookie["domain"])
         with open("act_login_session.pickle", "wb") as handle:
