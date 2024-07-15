@@ -42,7 +42,7 @@
   --background-overlay: rgba(0, 0, 0, 0.6); /* app background overlay color/gradient [default: rgba(0, 0, 0, 0.6)] */
   /*--background-image: url(https://cdn.discordapp.com/attachments/1148827206907334736/1184006528974471188/1161810_upscaled.jpg?ex=658a6702&is=6577f202&hm=6bf6e36e4b1eda1eadf375d8581d98010c295d07f1ebcc135549c16fd39101ee&); /* app background image (link must be HTTPS) [default: url(https://clearvision.github.io/images/sapphire.jpg)]*/
   /*--background-image: url(https://media.discordapp.net/attachments/1146993172686327808/1184009969360707594/8090724_upscaled.jpg?ex=658a6a36&is=6577f536&hm=267e758c6354d510d958217bb6ac79e6e9b656ae3d1d011b0160fea60a742777&=&format=webp&width=3840&height=2160);/**/
-  --background-image: url(https://media.discordapp.net/attachments/1180920965266419773/1193798797642453052/genshin-impact-raiden-shogun-sakura-mech-babochki-lisa-gorod.jpg?ex=65ae06c5&is=659b91c5&hm=f654ba483c78818be9683bd3e44268cb1f56eff772b37094f3367396b3993b9a&=&format=webp);
+  --background-image: url(https://github.com/alany08/mycdn/blob/main/discordbg.jpg?raw=true);
   --background-position: center; /* app background position [default: center] */
   --background-size: cover; /* app background size [default: cover] */
   --background-repeat: no-repeat; /* app background repeat [default: no-repeat] */
