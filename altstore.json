@@ -1,6 +1,15 @@
 {
   "apps": [
-
+    {
+      "bundleIdentifier": "com.christianselig.Apollo",
+      "bundleID": "com.christianselig.Apollo",
+      "developerName": "ichitaso",
+      "downloadURL": "https://github.com/ichitaso/ApolloPatcher/releases/download/v0.0.9/Apollo_1.15.11_ApolloPatcher_0.0.9.ipa",
+      "down": "https://github.com/ichitaso/ApolloPatcher/releases/download/v0.0.9/Apollo_1.15.11_ApolloPatcher_0.0.9.ipa",
+      "iconURL": "https://upload.wikimedia.org/wikipedia/en/thumb/d/da/Apollo_app_icon.svg/640px-Apollo_app_icon.svg.png",
+      "localizedDescription": "Use custom API key with Apollo",
+      "name": "ApolloPatcher"
+    }
   ],
   "description": "My own repository, for apps that I usually install",
   "identifier": "com.alany08.altstorerepo",
@@ -10,5 +19,5 @@
   ],
   "subtitle": "Alany08's personal repository in AltStore's format"
   "website": "https://alany08.github.io/",
-  userInfo: {}
+  "userInfo": {}
 }
