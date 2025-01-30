@@ -2,9 +2,13 @@ from fractions import Fraction
 from time import time
 
 matrix = [
-	[1, 2, 3, 4],
-	[2, 4, 3, 6],
-	[6, 2, 5, 3]
+	[1, 2, 3, 4, 2, 6, 5, 3],
+	[4, 6, 9, 2, 1, 3, 4, 2],
+	[0, 3, 2, 7, 3, 4, 8, 1],
+	[5, 3, 8, 6, 4, 7, 2, 1],
+	[1, 1, 3, 0, 3, 5, 7, 2],
+	[6, 4, 8, 3, 4, 8, 6, 5],
+	[1, 4, 4, 5, 3, 7, 6, 0]
 ]
 
 def print_matrix(matrix):
@@ -119,6 +123,7 @@ for row in range(len(matrix)):
 
 	for row_below in range(row+1, len(matrix)):
 		row_below_val = matrix[row_below][row]
+		if row_below_val == 0: continue
 
 		matrix = scale_row_matrix(matrix, row, row_below_val)
 		matrix = subtract_row_to(matrix, row_below, row, row_below)
@@ -131,6 +136,7 @@ for row in range(len(matrix)):
 	for row_above in range(row):
 		if matrix[row_above][row] == 0: continue
 		row_above_val = matrix[row_above][row]
+		if row_above_val == 0: continue
 
 		matrix = scale_row_matrix(matrix, row, row_above_val)
 		matrix = subtract_row_to(matrix, row_above, row, row_above)
