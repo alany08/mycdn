@@ -1,11 +1,9 @@
-#cool python file i made while learning linear algebra :D
-
 from fractions import Fraction
+from time import time
 
 matrix = [
 	[1, 2, 3, 4],
-	[4, 3, 2, 6],
-	#[0, 0, 0, 0],
+	[2, 4, 3, 6],
 	[6, 2, 5, 3]
 ]
 
@@ -20,7 +18,7 @@ def print_matrix(matrix):
 
 def swap_rows(matrix, r1, r2):
 	matrix[r1], matrix[r2] = matrix[r2], matrix[r1]
-	print("swap_rows:", str(r1) + ",", r2)
+	print("swap rows:", str(r1) + ",", r2)
 	print_matrix(matrix)
 	return matrix
 
@@ -86,20 +84,30 @@ def write_row(matrix, row, row_num):
 	print_matrix(matrix)
 	return matrix
 
+def shift_zeroes_to_bottom(matrix):
+	for i in range(len(matrix)):
+		zero = True
+		row = matrix[i]
+		for col in row:
+			if col != 0:
+				zero = False
+		if zero and i != len(matrix) - 1:
+			swap_rows(matrix, i, len(matrix) - 1)
+
+	print("shift all zero rows to bottom")
+	print_matrix(matrix)
+	return matrix
+
+#ACTUAL CALC START
+start_time = time()
+
 # check for multiple zeroes later
 matrix = sort_by_first_col(matrix)
 
 print("MATRIX SORTED\n")
 
 #shift zeroes to the bottom
-for i in range(len(matrix)):
-	zero = True
-	row = matrix[i]
-	for col in row:
-		if col != 0:
-			zero = False
-	if zero and i != len(matrix) - 1:
-		swap_rows(matrix, i, len(matrix) - 1)
+matrix = shift_zeroes_to_bottom(matrix)
 
 print("ALL ZEROES SHIFTED TO BOTTOM\n")
 
@@ -128,4 +136,11 @@ for row in range(len(matrix)):
 		matrix = subtract_row_to(matrix, row_above, row, row_above)
 		matrix = scale_row_matrix(matrix, row, 1/row_above_val)
 
+#shift zeroes to the bottom
+matrix = shift_zeroes_to_bottom(matrix)
+
 print("REDUCED ROW ECHELON FORM ACHIEVED\n")
+
+end_time = time()
+
+print("Execution time:", (end_time - start_time)*1000, "ms")
