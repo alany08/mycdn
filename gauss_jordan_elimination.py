@@ -1,15 +1,22 @@
 from fractions import Fraction
 from time import time
 
+"""
 matrix = [
-	[1, 2, 3, 4, 2, 6, 5, 3],
-	[4, 6, 9, 2, 1, 3, 4, 2],
-	[0, 3, 2, 7, 3, 4, 8, 1],
-	[5, 3, 8, 6, 4, 7, 2, 1],
-	[1, 1, 3, 0, 3, 5, 7, 2],
-	[6, 4, 8, 3, 4, 8, 6, 5],
-	[1, 4, 4, 5, 3, 7, 6, 0]
+	[1, 0, -3, 6],
+	[4, 4, 3, 21],
+        [0, 2, 5, 1]
 ]
+"""
+matrix = []
+while True:
+    row = input("Enter row (enter to finish): ")
+    if not row:
+        break
+    row = row.split(",")
+    for i in range(len(row)):
+        row[i] = eval(row[i])
+    matrix.append(row)
 
 def print_matrix(matrix):
 	for row in matrix:
@@ -17,6 +24,7 @@ def print_matrix(matrix):
 			print(Fraction(col).limit_denominator(), end="\t")
 		print("")
 	print("")
+    input("")
 
 #matrix operations
 
