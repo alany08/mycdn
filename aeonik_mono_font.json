@@ -1,5 +1,7 @@
 {
-  "name": "Aeonik Mono",
+  "name": "Personal",
   "spec": 1,
-  "main": "https://github.com/alany08/mycdn/raw/refs/heads/main/aeonic_mono_regular.tff"
+  "main": {
+    "Aeonik Mono Regular": "https://github.com/alany08/mycdn/raw/refs/heads/main/aeonic_mono_regular.tff"
+  }
 }
