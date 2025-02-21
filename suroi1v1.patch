@@ -44,7 +44,7 @@ index f99a69b36..1538631fc 100644
 +            gameAddress: "ws://canterburyct.duckdns.org:800<ID>"
          }
      },
-     defaultRegion: "na"
+     defaultRegion: "naw"
 diff --git a/client/src/typings/translations.ts b/client/src/typings/translations.ts
 index c8cbe4ebc..e9af15161 100644
 --- a/client/src/typings/translations.ts
