@@ -45,7 +45,7 @@
   --background-size: cover; /* app background size [default: cover] */
   --background-repeat: no-repeat; /* app background repeat [default: no-repeat] */
   --background-attachment: fixed; /* app background attachment [default: fixed] */
-  --background-brightness: 100%; /* app background brightness (< 100% for darken, > 100% for lighten) [default: 100%] */
+  --background-brightness: 75%; /* app background brightness (< 100% for darken, > 100% for lighten) [default: 100%] */
   --background-contrast: 100%; /* app background contrast [default: 100%] */
   --background-saturation: 100%; /* app background saturation [default: 100%] */
   --background-invert: 0%; /* app background invert (0 - 100%)  [default: 0%] */
