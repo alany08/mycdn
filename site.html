@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LinkCall — serverless P2P</title>
+<style>
+  :root { --pad: 12px; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  button, input, textarea, label { font-size: 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; }
+  button.primary { background:#111; color:#fff; border-color:#111; }
+  button.small { padding: 6px 10px; }
+  input[type="text"] { width: min(780px, 100%); }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid #eee; }
+  video { width: 48%; max-width: 560px; background:#000; aspect-ratio:16/9; border-radius:10px; }
+  .muted { opacity: .7 }
+  .hint { font-size: 13px; color: #666; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<h1>🔗 LinkCall — serverless P2P (HQ audio)</h1>
+
+<div class="row">
+  <button id="create" class="primary">Create link</button>
+  <button id="join" class="primary">Join from link</button>
+  <button id="leave">Leave</button>
+  <button id="mute">Mute</button>
+  <button id="camera">Camera</button>
+  <label class="pill"><input type="checkbox" id="proAudio" /> Pro audio</label>
+</div>
+
+<div class="row">
+  <input id="share" type="text" placeholder="Shareable link appears here…" readonly />
+  <button id="copy" class="small">Copy</button>
+</div>
+
+<p class="hint">
+Flow (no servers): Creator clicks <b>Create link</b> → sends URL to friend.  
+Friend opens it and clicks <b>Join from link</b> → gets a new <b>answer link</b> back → sends that to creator.  
+Creator opens the answer link to connect. (Two links, no backend.)
+</p>
+
+<div class="row">
+  <video id="local" autoplay playsinline muted></video>
+  <video id="remote" autoplay playsinline></video>
+</div>
+
+<script>
+/*** Utility: base64-url + optional compression (simple) ***/
+function b64uEncode(str) {
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64uDecode(str) {
+  str = str.replace(/-/g,'+').replace(/_/g,'/');
+  while (str.length % 4) str += '=';
+  return atob(str);
+}
+
+/*** ICE config ***/
+// Pure STUN (most private; may fail on strict NATs)
+const ICE_SERVERS = [
+  { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"] }
+];
+
+// OPTIONAL (less secure): add a TURN you don’t run, with static creds.
+// WARNING: these creds will be exposed to users.
+// ICE_SERVERS.push({ urls:"turn:YOUR_TURN_HOST:3478", username:"publicUser", credential:"publicPass" });
+
+/*** DOM ***/
+const $ = id => document.getElementById(id);
+const btnCreate = $("create"), btnJoin = $("join"), btnLeave = $("leave");
+const btnMute = $("mute"), btnCamera = $("camera");
+const proAudio = $("proAudio");
+const vLocal = $("local"), vRemote = $("remote");
+const share = $("share"), btnCopy = $("copy");
+
+let pc, localStream, remoteStream;
+let audioEnabled = true, videoEnabled = true;
+
+/*** Media: HQ audio + good video defaults ***/
+async function getLocalStream() {
+  if (localStream) return localStream;
+  const wantPro = proAudio.checked;
+  const audio = wantPro
+    ? { channelCount: 2, sampleRate: 48000, echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+    : { channelCount: 2, sampleRate: 48000, echoCancellation:true, noiseSuppression:true, autoGainControl:true };
+  const video = { width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60, max:60} };
+  localStream = await navigator.mediaDevices.getUserMedia({ audio, video });
+  vLocal.srcObject = localStream;
+  return localStream;
+}
+
+/*** Create PeerConnection with “no trickle ICE” ***/
+function createPC() {
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  pc.ontrack = e => {
+    if (!remoteStream) remoteStream = new MediaStream();
+    remoteStream.addTrack(e.track);
+    vRemote.srcObject = remoteStream;
+  };
+  return pc;
+}
+
+/*** Tune senders for quality (Opus + bitrate) ***/
+async function tuneSenders() {
+  const audioSender = pc.getSenders().find(s => s.track && s.track.kind === "audio");
+  if (audioSender) {
+    try {
+      const p = audioSender.getParameters(); if (!p.encodings) p.encodings = [{}];
+      p.encodings[0].maxBitrate = 192000; // ~192 kbps
+      p.degradationPreference = "maintain-framerate";
+      await audioSender.setParameters(p);
+      audioSender.track.contentHint = "speech"; // or "music" if you’re playing music
+    } catch {}
+  }
+  const videoSender = pc.getSenders().find(s => s.track && s.track.kind === "video");
+  if (videoSender) {
+    try {
+      const p = videoSender.getParameters(); if (!p.encodings) p.encodings = [{}];
+      p.encodings[0].maxBitrate = 4_000_000; // ~4 Mbps
+      p.degradationPreference = "maintain-framerate";
+      await videoSender.setParameters(p);
+      videoSender.track.contentHint = "motion";
+    } catch {}
+  }
+  // Prefer Opus for audio; AV1/VP9 then H.264/VP8 for video
+  pc.getTransceivers().forEach(t => {
+    try {
+      const caps = RTCRtpTransceiver.getCapabilities(t.kind);
+      if (!caps) return;
+      if (t.kind === "audio") {
+        const pref = [
+          ...caps.codecs.filter(c => /opus/i.test(c.mimeType)),
+          ...caps.codecs.filter(c => !/opus/i.test(c.mimeType))
+        ];
+        t.setCodecPreferences(pref);
+      } else {
+        const pref = [
+          ...caps.codecs.filter(c => /av1|vp9/i.test(c.mimeType)),
+          ...caps.codecs.filter(c => /h264|vp8/i.test(c.mimeType))
+        ];
+        t.setCodecPreferences(pref);
+      }
+    } catch {}
+  });
+}
+
+/*** Helper: build links with SDP in the fragment ***/
+function makeLink(kind, payloadObj) {
+  const u = new URL(window.location.href);
+  const data = b64uEncode(JSON.stringify({ kind, ...payloadObj }));
+  u.hash = data; // stays on client; never sent to server
+  return u.toString();
+}
+function readLinkData() {
+  if (!location.hash) return null;
+  try { return JSON.parse(b64uDecode(location.hash.slice(1))); }
+  catch { return null; }
+}
+
+/*** FLOW A: Creator — “Create link” ***/
+btnCreate.onclick = async () => {
+  await getLocalStream();
+  pc = createPC();
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  await tuneSenders();
+
+  // Disable trickle ICE: gather all candidates before making the link
+  await pc.setLocalDescription(await pc.createOffer({ offerToReceiveAudio:true, offerToReceiveVideo:true }));
+  await pc.setLocalDescription(pc.localDescription);
+  await pc.localDescription; // no-op; ensures description exists
+
+  await new Promise(resolve => {
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === "complete") resolve();
+    };
+  });
+
+  // Build offer link containing the full SDP
+  const offerLink = makeLink("offer", { sdp: pc.localDescription.sdp, type: pc.localDescription.type });
+  share.value = offerLink;
+  history.replaceState({}, "", offerLink); // show it so you can copy easily
+};
+
+/*** FLOW B: Friend — “Join from link” ***/
+btnJoin.onclick = async () => {
+  const data = readLinkData();
+  if (!data) { alert("No offer/answer found in the link."); return; }
+
+  if (data.kind === "offer") {
+    // We are the callee: set remote offer, produce answer, show answer link
+    await getLocalStream();
+    pc = createPC();
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    await tuneSenders();
+
+    await pc.setRemoteDescription({ type: "offer", sdp: data.sdp });
+    await pc.setLocalDescription(await pc.createAnswer());
+    await new Promise(resolve => {
+      pc.onicegatheringstatechange = () => {
+        if (pc.iceGatheringState === "complete") resolve();
+      };
+    });
+
+    const answer = pc.localDescription;
+    const answerLink = makeLink("answer", { sdp: answer.sdp, type: answer.type });
+    share.value = answerLink;
+    history.replaceState({}, "", answerLink); // now send this back to the creator
+
+  } else if (data.kind === "answer") {
+    // We are the caller: finish by applying the answer
+    if (!pc) {
+      // If the creator re-opened in a new tab, we need to recreate the original PC and local offer.
+      await getLocalStream();
+      pc = createPC();
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+      await tuneSenders();
+      // In a real app, you’d persist your original offer in sessionStorage to restore here.
+      alert("Open the original 'offer link' tab and click Join from there, or implement offer restore.");
+      return;
+    }
+    await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+  } else {
+    alert("Unknown link data.");
+  }
+};
+
+/*** Leave / cleanup ***/
+btnLeave.onclick = () => {
+  if (pc) { pc.getSenders().forEach(s => s.track && s.track.stop()); pc.close(); pc = null; }
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (remoteStream) { remoteStream.getTracks().forEach(t => t.stop()); remoteStream = null; }
+  vLocal.srcObject = null; vRemote.srcObject = null;
+  share.value = "";
+};
+
+/*** Mute / camera ***/
+btnMute.onclick = () => {
+  audioEnabled = !audioEnabled;
+  if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = audioEnabled);
+  btnMute.classList.toggle("muted", !audioEnabled);
+  btnMute.textContent = audioEnabled ? "Mute" : "Unmute";
+};
+btnCamera.onclick = () => {
+  videoEnabled = !videoEnabled;
+  if (localStream) localStream.getVideoTracks().forEach(t => t.enabled = videoEnabled);
+  btnCamera.classList.toggle("muted", !videoEnabled);
+  btnCamera.textContent = videoEnabled ? "Camera" : "Camera Off";
+};
+
+/*** Copy ***/
+btnCopy.onclick = async () => {
+  if (!share.value) return;
+  await navigator.clipboard.writeText(share.value);
+  btnCopy.textContent = "Copied!";
+  setTimeout(() => btnCopy.textContent = "Copy", 1000);
+};
+</script>
+</body>
+</html>
